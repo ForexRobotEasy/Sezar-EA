@@ -1,0 +1,77 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                 Sezar EA                         |
+//|                  Developer's Site: forexroboteasy.com            |
+//|               Development: Forex Robot Easy Team                 |
+//+------------------------------------------------------------------+
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <Timeseries\Timeseries.mqh>
+#include <Math\Math.mqh>
+#include <Algorithms\Math\MA.mqh>
+
+// Define global variables
+CTrade trade;
+CTimeseries series;
+CMA ma;
+
+// Define input parameters
+input double LotSize = 0.1;           // Lot size for trading
+input double StopLoss = 100;          // Stop loss level
+input double TakeProfit = 200;        // Take profit level
+input int MaxBars = 1000;             // Maximum number of bars to consider
+input int PeriodMA = 14;              // Period for Moving Average calculation
+
+//+------------------------------------------------------------------+
+//|                            OnTick function                        |
+//|   Function for handling incoming ticks and making trade decisions |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   int bars = MathMin(series.Total(), MaxBars);
+   double maValue = ma.Value(bars-1);
+
+   // Check for buy signal
+   if (series.Close(bars-1) > maValue && series.Close(bars-2) < maValue)
+   {
+      double stopLossLevel = series.Close(bars-1) - StopLoss * _Point;
+      double takeProfitLevel = series.Close(bars-1) + TakeProfit * _Point;
+      trade.Buy(LotSize, stopLossLevel, takeProfitLevel);
+   }
+
+   // Check for sell signal
+   if (series.Close(bars-1) < maValue && series.Close(bars-2) > maValue)
+   {
+      double stopLossLevel = series.Close(bars-1) + StopLoss * _Point;
+      double takeProfitLevel = series.Close(bars-1) - TakeProfit * _Point;
+      trade.Sell(LotSize, stopLossLevel, takeProfitLevel);
+   }
+}
+
+//+------------------------------------------------------------------+
+//|                      OnInit function                              |
+//|     Function for initializing necessary objects and variables     |
+//+------------------------------------------------------------------+
+void OnInit()
+{
+   series.SetSymbol(_Symbol);
+   series.SetPeriod(_Period);
+   series.SetDigits(_Digits);
+
+   ma.SetInputSeries(series.Close);
+   ma.SetMaMethod(MODE_SMA);
+   ma.SetMaPeriod(PeriodMA);
+
+   trade.SetExpertMagicNumber(123456);  // Set expert magic number
+   trade.SetDeviationInPoints(10);      // Set maximum deviation in points
+}
+
+//+------------------------------------------------------------------+
+//|                          OnDeinit function                        |
+//|            Function for cleaning up before the EA is removed      |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   trade.CloseAll();  // Close all open trades before deinitializing
+}
